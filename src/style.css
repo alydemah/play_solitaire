@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --game-bg: #076324;
+  --card-transition-duration: 0.5s;
+  --card-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--game-bg);
+}
+
+#app {
+  width: 100%;
+  height: 100vh;
+}
+
+/* Global card animations */
+.card-transition {
+  transition: all var(--card-transition-duration) var(--card-transition-timing);
+}
+
+.card-drag {
+  cursor: grab;
+  transition: transform 0.2s var(--card-transition-timing);
+}
+
+.card-drag:active {
+  cursor: grabbing;
+  transform: scale(1.05);
+}
+
+/* Drop target highlight */
+.drop-target {
+  outline: 2px dashed rgba(255, 255, 255, 0.5);
+  outline-offset: 4px;
+  transition: outline 0.3s var(--card-transition-timing);
+}
+
+.drop-target.valid-target {
+  outline-color: rgba(52, 211, 153, 0.8);
+}
+
+.drop-target.invalid-target {
+  outline-color: rgba(239, 68, 68, 0.8);
+}
