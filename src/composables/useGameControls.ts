@@ -1,22 +1,32 @@
 import { ref } from 'vue';
 import { useGameStore } from '../stores/gameStore';
 import { useAutoPlay } from './useAutoPlay';
+import { useSound } from './useSound';
 
-export const useGameControls = () => {
+export function useGameControls() {
   const gameStore = useGameStore();
   const showResetConfirm = ref(false);
   const showSettings = ref(false);
   const { isPlaying, startAutoPlay, stopAutoPlay } = useAutoPlay();
+  const { playMoveSound, playErrorSound } = useSound();
 
   const handleHint = () => {
     if (!isPlaying.value) {
-      gameStore.showNextMove();
+      const success = gameStore.showNextMove();
+      if (success) {
+        playMoveSound();
+      } else {
+        playErrorSound();
+      }
     }
   };
 
   const handleUndo = () => {
     if (!isPlaying.value) {
-      gameStore.undoLastMove();
+      const success = gameStore.undoLastMove();
+      if (success) {
+        playMoveSound();
+      }
     }
   };
 
@@ -51,4 +61,4 @@ export const useGameControls = () => {
     startAutoPlay,
     stopAutoPlay
   };
-};
+}

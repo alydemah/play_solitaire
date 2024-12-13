@@ -1,11 +1,25 @@
-import { ref, computed } from 'vue';
-import type { GameState, GameSettings } from '../types/game.types';
-import { VARIANT_CONFIGS } from '../types/variants.types';
-import { saveGameState, loadGameState, hasGameState as checkStorageForGame } from '../utils/storageUtils';
+import { ref, computed } from "vue";
+import type { GameState, GameSettings } from "../types/game.types";
+import { VARIANT_CONFIGS } from "../types/variants.types";
+import { GameFactory } from "../gameLogic/GameFactory";
+import {
+  saveGameState,
+  loadGameState,
+  hasGameState as checkStoredGame,
+} from "../utils/storageUtils";
 
-export const useGameState = () => {
+const DEFAULT_SETTINGS: GameSettings = {
+  variant: "klondike",
+  difficulty: "medium",
+  drawCount: 1,
+  timerEnabled: true,
+  soundEnabled: true,
+  background: "bg-green-800",
+};
+
+export function useGameState() {
   const gameState = ref<GameState>({
-    variant: 'klondike',
+    variant: DEFAULT_SETTINGS.variant,
     deck: [],
     waste: [],
     foundations: [[], [], [], []],
@@ -13,22 +27,18 @@ export const useGameState = () => {
     freeCells: [],
     score: 0,
     moves: 0,
-    time: 0
+    time: 0,
   });
 
-  const settings = ref<GameSettings>({
-    variant: 'klondike',
-    difficulty: 'medium',
-    drawCount: 1,
-    timerEnabled: true,
-    soundEnabled: true,
-    background: 'bg-green-800'
-  });
-
+  const settings = ref<GameSettings>(DEFAULT_SETTINGS);
   const variantConfig = computed(() => VARIANT_CONFIGS[settings.value.variant]);
+  const currentGame = computed(() =>
+    GameFactory.createGame(settings.value.variant, gameState.value)
+  );
 
   const updateSettings = (newSettings: Partial<GameSettings>) => {
     settings.value = { ...settings.value, ...newSettings };
+    saveGameState(gameState.value, settings.value);
   };
 
   const saveGame = () => {
@@ -46,16 +56,17 @@ export const useGameState = () => {
   };
 
   const hasGameState = () => {
-    return checkStorageForGame();
+    return checkStoredGame();
   };
 
   return {
     gameState,
     settings,
     variantConfig,
+    currentGame,
     updateSettings,
     saveGame,
     loadGame,
-    hasGameState
+    hasGameState,
   };
-};
+}

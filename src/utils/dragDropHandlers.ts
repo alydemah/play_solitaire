@@ -1,6 +1,6 @@
 import type { DragEvent } from 'vue';
 import type { Card } from '../types/game.types';
-import type { GameStore } from '../stores/gameStore';
+import { useGameStore } from '../stores/gameStore';
 
 interface DragData {
   sourceType: string;
@@ -14,58 +14,63 @@ interface DragDropResult {
   error?: string;
 }
 
-export const handlePileDrop = async (
+/**
+ * Handles dropping a card onto a pile
+ * @param e - Drag event
+ * @param targetType - Type of target pile
+ * @param targetIndex - Index of target pile
+ * @param store - Game store instance
+ */
+export async function handlePileDrop(
   e: DragEvent, 
   targetType: string, 
-  targetIndex: number, 
-  gameStore: GameStore
-): Promise<{ success: boolean; error?: string }> => {
+  targetIndex: number,
+  store: ReturnType<typeof useGameStore>
+): Promise<DragDropResult> {
   try {
-    const data = e.dataTransfer?.getData('text/plain');
-    if (!data) return { success: false, error: 'No drag data' };
+    if (!e.dataTransfer) {
+      return { success: false, error: 'No data transfer available' };
+    }
 
-    const { sourceType, sourceIndex, cardId } = JSON.parse(data);
-    
-    const success = gameStore.handleMove(
-      { type: sourceType, index: sourceIndex },
+    const rawData = e.dataTransfer.getData('application/json');
+    if (!rawData) {
+      return { success: false, error: 'No drag data available' };
+    }
+
+    const data = JSON.parse(rawData) as DragData;
+    if (!isValidDragData(data)) {
+      return { success: false, error: 'Invalid drag data format' };
+    }
+
+    const success = store.handleMove(
+      { 
+        type: data.sourceType, 
+        index: data.sourceIndex
+      },
       { type: targetType, index: targetIndex }
     );
 
-    return { success };
+    return {
+      success,
+      error: success ? undefined : 'Invalid move'
+    };
   } catch (err) {
-    console.error('Error handling drop:', err);
-    return { success: false, error: 'Drop handling error' };
+    console.error('Error processing drop:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Unknown error'
+    };
   }
-};
+}
 
-export const isValidDragData = (data: any): data is DragData => {
+/**
+ * Validates drag data structure
+ */
+function isValidDragData(data: any): data is DragData {
   return (
     typeof data === 'object' &&
     typeof data.sourceType === 'string' &&
     typeof data.cardId === 'string' &&
     typeof data.card === 'object'
   );
-};
-
-export const handleDragStart = (
-  e: DragEvent, 
-  sourceType: string, 
-  sourceIndex: number, 
-  cardId: string
-): void => {
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', JSON.stringify({
-      sourceType,
-      sourceIndex,
-      cardId
-    }));
-  }
-};
-
-export const handleDragOver = (e: DragEvent): void => {
-  e.preventDefault();
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = 'move';
-  }
-};
+}

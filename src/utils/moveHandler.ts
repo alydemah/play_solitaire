@@ -1,143 +1,174 @@
-import type { GameState, Card } from '../types/game.types';
+import type { Card, GameState, GameMove } from '../types/game.types';
 import { isValidFoundationMove, isValidTableauMove } from './moveValidation';
-import { cloneDeep } from 'lodash';
 
-export const getSourceCards = (
-  gameState: GameState, 
-  source: { type: string; index?: number }
-): Card[] => {
-  switch (source.type) {
-    case 'waste':
-      return gameState.waste.length ? [gameState.waste[gameState.waste.length - 1]] : [];
-      
-    case 'tableau':
-      if (typeof source.index === 'number') {
-        const tableau = gameState.tableaus[source.index];
-        const faceUpIndex = tableau.findIndex(card => card.faceUp);
-        if (faceUpIndex === -1) return [];
-        return tableau.slice(faceUpIndex);
-      }
-      return [];
-      
-    case 'foundation':
-      if (typeof source.index === 'number' && gameState.foundations[source.index].length) {
-        return [gameState.foundations[source.index][gameState.foundations[source.index].length - 1]];
-      }
-      return [];
-      
-    default:
-      return [];
-  }
-};
+interface MoveResult {
+  success: boolean;
+  newState: GameState;
+  move?: GameMove;
+  error?: string;
+}
 
-export const moveCard = (
-  gameState: GameState,
-  source: { type: string; index?: number },
-  target: { type: string; index: number }
-): { success: boolean; newState?: GameState; move?: any } => {
-  try {
-    const sourceCards = getSourceCards(gameState, source);
-    if (!sourceCards.length) return { success: false };
+interface SourceCardsResult {
+  success: boolean;
+  cards: Card[];
+  error?: string;
+}
 
-    const newState = cloneDeep(gameState);
-    let success = false;
-
-    switch (target.type) {
-      case 'foundation':
-        success = handleFoundationMove(newState, source, target, sourceCards[0]);
-        break;
-      case 'tableau':
-        success = handleTableauMove(newState, source, target, sourceCards);
-        break;
+/**
+ * Gets cards from source pile
+ */
+function getSourceCards(state: GameState, source: { type: string; index?: number }): SourceCardsResult {
+  if (source.type === 'waste') {
+    if (state.waste.length === 0) {
+      return { success: false, cards: [], error: 'No cards in waste pile' };
     }
-
-    if (success) {
-      return {
-        success: true,
-        newState,
-        move: {
-          sourceType: source.type,
-          sourceIndex: source.index,
-          targetType: target.type,
-          targetIndex: target.index,
-          card: sourceCards[0],
-          previousState: gameState
-        }
-      };
-    }
-
-    return { success: false };
-  } catch (err) {
-    console.error('Error processing move:', err);
-    return { success: false };
+    return { success: true, cards: [state.waste[state.waste.length - 1]] };
   }
-};
-
-const handleFoundationMove = (
-  state: GameState,
-  source: { type: string; index?: number },
-  target: { type: string; index: number },
-  card: Card
-): boolean => {
-  const foundation = state.foundations[target.index];
   
-  if (!isValidFoundationMove(card, foundation)) {
-    console.log('Invalid foundation move');
-    return false;
+  if (source.type === 'tableau' && source.index !== undefined) {
+    const tableau = state.tableaus[source.index];
+    if (tableau.length === 0) {
+      return { success: false, cards: [], error: 'Empty tableau pile' };
+    }
+    
+    const faceUpIndex = tableau.findIndex(card => card.faceUp);
+    if (faceUpIndex === -1) {
+      return { success: false, cards: [], error: 'No face-up cards' };
+    }
+    
+    return { success: true, cards: tableau.slice(faceUpIndex) };
   }
+  
+  return { success: false, cards: [], error: 'Invalid source type' };
+}
 
-  switch (source.type) {
-    case 'waste':
-      state.waste.pop();
-      break;
-    case 'tableau':
-      if (typeof source.index === 'number') {
-        state.tableaus[source.index].pop();
-        const tableau = state.tableaus[source.index];
-        if (tableau.length && !tableau[tableau.length - 1].faceUp) {
-          tableau[tableau.length - 1].faceUp = true;
-        }
-      }
-      break;
+/**
+ * Validates move based on game rules
+ */
+function validateMove(
+  cards: Card[], 
+  targetType: string, 
+  targetIndex: number, 
+  state: GameState
+): { success: boolean; error?: string } {
+  const [firstCard] = cards;
+  
+  if (targetType === 'foundation') {
+    if (cards.length !== 1) {
+      return { success: false, error: 'Can only move one card to foundation' };
+    }
+    return { 
+      success: isValidFoundationMove(firstCard, state.foundations[targetIndex]),
+      error: 'Invalid foundation move'
+    };
   }
+  
+  if (targetType === 'tableau') {
+    return { 
+      success: isValidTableauMove(firstCard, state.tableaus[targetIndex]),
+      error: 'Invalid tableau move'
+    };
+  }
+  
+  return { success: false, error: 'Invalid target type' };
+}
 
-  state.foundations[target.index].push(card);
-  return true;
-};
-
-const handleTableauMove = (
+/**
+ * Removes cards from source pile
+ */
+function removeCardsFromSource(
   state: GameState,
   source: { type: string; index?: number },
+  count: number
+): { success: boolean; error?: string } {
+  try {
+    if (source.type === 'waste') {
+      state.waste.pop();
+    } else if (source.type === 'tableau' && source.index !== undefined) {
+      const tableau = state.tableaus[source.index];
+      state.tableaus[source.index] = tableau.slice(0, tableau.length - count);
+      
+      // Flip new top card if needed
+      if (state.tableaus[source.index].length > 0) {
+        const topCard = state.tableaus[source.index][state.tableaus[source.index].length - 1];
+        if (!topCard.faceUp) {
+          topCard.faceUp = true;
+        }
+      }
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: 'Error removing cards' };
+  }
+}
+
+/**
+ * Adds cards to target pile
+ */
+function addCardsToTarget(
+  state: GameState,
   target: { type: string; index: number },
   cards: Card[]
-): boolean => {
-  const tableau = state.tableaus[target.index];
+): { success: boolean; error?: string } {
+  try {
+    if (target.type === 'foundation') {
+      state.foundations[target.index].push(...cards);
+    } else if (target.type === 'tableau') {
+      state.tableaus[target.index].push(...cards);
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: 'Error adding cards' };
+  }
+}
+
+/**
+ * Main function to handle card movement
+ */
+export function moveCard(
+  currentState: GameState,
+  source: { type: string; index?: number },
+  target: { type: string; index: number }
+): MoveResult {
+  const newState = JSON.parse(JSON.stringify(currentState));
   
-  if (!isValidTableauMove(cards[0], tableau)) {
-    return false;
+  // Get source cards
+  const sourceResult = getSourceCards(newState, source);
+  if (!sourceResult.success) {
+    return { success: false, newState, error: sourceResult.error };
   }
 
-  switch (source.type) {
-    case 'waste':
-      state.waste.pop();
-      break;
-    case 'tableau':
-      if (typeof source.index === 'number') {
-        const sourceTableau = state.tableaus[source.index];
-        state.tableaus[source.index] = sourceTableau.slice(0, -cards.length);
-        if (state.tableaus[source.index].length && 
-            !state.tableaus[source.index][state.tableaus[source.index].length - 1].faceUp) {
-          state.tableaus[source.index][state.tableaus[source.index].length - 1].faceUp = true;
-        }
-      }
-      break;
-    case 'foundation':
-      if (typeof source.index === 'number') {
-        state.foundations[source.index].pop();
-      }
-      break;
+  // Validate move
+  const validationResult = validateMove(sourceResult.cards, target.type, target.index, newState);
+  if (!validationResult.success) {
+    return { success: false, newState, error: validationResult.error };
   }
 
-  state.tableaus[target.index].push(...cards);
-  return true;
-};
+  // Store previous state for undo
+  const previousState = JSON.parse(JSON.stringify(currentState));
+
+  // Remove cards from source
+  const removeResult = removeCardsFromSource(newState, source, sourceResult.cards.length);
+  if (!removeResult.success) {
+    return { success: false, newState, error: removeResult.error };
+  }
+
+  // Add cards to target
+  const addResult = addCardsToTarget(newState, target, sourceResult.cards);
+  if (!addResult.success) {
+    return { success: false, newState, error: addResult.error };
+  }
+
+  // Create move record
+  const move: GameMove = {
+    type: `${source.type}-to-${target.type}`,
+    sourceType: source.type,
+    sourceIndex: source.index,
+    targetType: target.type,
+    targetIndex: target.index,
+    card: sourceResult.cards[0],
+    previousState
+  };
+
+  return { success: true, newState, move };
+}

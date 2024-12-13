@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import type { Card } from '../../types/game.types';
 import CardPattern from './CardPattern.vue';
-import { getDisplayRank, getRankSymbol } from '../../utils/cardPatternUtils';
+import { getDisplayRank, getRankSymbol } from '../../utils/cardPatterns';
 
 const props = defineProps<{
   card: Card;
