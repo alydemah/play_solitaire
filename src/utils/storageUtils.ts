@@ -8,7 +8,7 @@ interface SavedGameData {
   timestamp: string;
 }
 
-export function saveGameState(gameState: GameState, settings: GameSettings): void {
+export const saveGameState = (gameState: GameState, settings: GameSettings): void => {
   try {
     const data: SavedGameData = {
       gameState,
@@ -19,9 +19,9 @@ export function saveGameState(gameState: GameState, settings: GameSettings): voi
   } catch (err) {
     console.error('Error saving game state:', err);
   }
-}
+};
 
-export function loadGameState(): SavedGameData | null {
+export const loadGameState = (): SavedGameData | null => {
   try {
     const savedData = localStorage.getItem(STORAGE_KEY);
     if (!savedData) return null;
@@ -30,12 +30,12 @@ export function loadGameState(): SavedGameData | null {
     console.error('Error loading game state:', err);
     return null;
   }
-}
+};
 
-export function hasGameState(): boolean {
+export const hasGameState = (): boolean => {
   return localStorage.getItem(STORAGE_KEY) !== null;
-}
+};
 
-export function clearGameState(): void {
+export const clearGameState = (): void => {
   localStorage.removeItem(STORAGE_KEY);
-}
+};

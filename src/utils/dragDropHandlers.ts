@@ -1,6 +1,6 @@
 import type { DragEvent } from 'vue';
 import type { Card } from '../types/game.types';
-import { useGameStore } from '../stores/gameStore';
+import type { GameStore } from '../stores/gameStore';
 
 interface DragData {
   sourceType: string;
@@ -14,63 +14,58 @@ interface DragDropResult {
   error?: string;
 }
 
-/**
- * Handles dropping a card onto a pile
- * @param e - Drag event
- * @param targetType - Type of target pile
- * @param targetIndex - Index of target pile
- * @param store - Game store instance
- */
-export async function handlePileDrop(
+export const handlePileDrop = async (
   e: DragEvent, 
   targetType: string, 
-  targetIndex: number,
-  store: ReturnType<typeof useGameStore>
-): Promise<DragDropResult> {
+  targetIndex: number, 
+  gameStore: GameStore
+): Promise<{ success: boolean; error?: string }> => {
   try {
-    if (!e.dataTransfer) {
-      return { success: false, error: 'No data transfer available' };
-    }
+    const data = e.dataTransfer?.getData('text/plain');
+    if (!data) return { success: false, error: 'No drag data' };
 
-    const rawData = e.dataTransfer.getData('application/json');
-    if (!rawData) {
-      return { success: false, error: 'No drag data available' };
-    }
-
-    const data = JSON.parse(rawData) as DragData;
-    if (!isValidDragData(data)) {
-      return { success: false, error: 'Invalid drag data format' };
-    }
-
-    const success = store.handleMove(
-      { 
-        type: data.sourceType, 
-        index: data.sourceIndex
-      },
+    const { sourceType, sourceIndex, cardId } = JSON.parse(data);
+    
+    const success = gameStore.handleMove(
+      { type: sourceType, index: sourceIndex },
       { type: targetType, index: targetIndex }
     );
 
-    return {
-      success,
-      error: success ? undefined : 'Invalid move'
-    };
+    return { success };
   } catch (err) {
-    console.error('Error processing drop:', err);
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : 'Unknown error'
-    };
+    console.error('Error handling drop:', err);
+    return { success: false, error: 'Drop handling error' };
   }
-}
+};
 
-/**
- * Validates drag data structure
- */
-function isValidDragData(data: any): data is DragData {
+export const isValidDragData = (data: any): data is DragData => {
   return (
     typeof data === 'object' &&
     typeof data.sourceType === 'string' &&
     typeof data.cardId === 'string' &&
     typeof data.card === 'object'
   );
-}
+};
+
+export const handleDragStart = (
+  e: DragEvent, 
+  sourceType: string, 
+  sourceIndex: number, 
+  cardId: string
+): void => {
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+      sourceType,
+      sourceIndex,
+      cardId
+    }));
+  }
+};
+
+export const handleDragOver = (e: DragEvent): void => {
+  e.preventDefault();
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = 'move';
+  }
+};

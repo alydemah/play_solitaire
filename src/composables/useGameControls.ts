@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { useGameStore } from '../stores/gameStore';
 import { useAutoPlay } from './useAutoPlay';
 
-export function useGameControls() {
+export const useGameControls = () => {
   const gameStore = useGameStore();
   const showResetConfirm = ref(false);
   const showSettings = ref(false);
@@ -51,4 +51,4 @@ export function useGameControls() {
     startAutoPlay,
     stopAutoPlay
   };
-}
+};

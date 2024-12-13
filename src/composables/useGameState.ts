@@ -1,9 +1,9 @@
 import { ref, computed } from 'vue';
 import type { GameState, GameSettings } from '../types/game.types';
 import { VARIANT_CONFIGS } from '../types/variants.types';
-import { saveGameState, loadGameState, hasGameState } from '../utils/storageUtils';
+import { saveGameState, loadGameState, hasGameState as checkStorageForGame } from '../utils/storageUtils';
 
-export function useGameState() {
+export const useGameState = () => {
   const gameState = ref<GameState>({
     variant: 'klondike',
     deck: [],
@@ -45,8 +45,8 @@ export function useGameState() {
     return false;
   };
 
-  const checkSavedGame = () => {
-    return hasGameState();
+  const hasGameState = () => {
+    return checkStorageForGame();
   };
 
   return {
@@ -56,6 +56,6 @@ export function useGameState() {
     updateSettings,
     saveGame,
     loadGame,
-    checkSavedGame
+    hasGameState
   };
-}
+};

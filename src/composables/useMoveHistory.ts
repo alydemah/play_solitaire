@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import type { GameMove } from '../types/game.types';
 
-export function useMoveHistory() {
+export const useMoveHistory = () => {
   const currentMove = ref<GameMove | null>(null);
   const nextMove = ref<GameMove | null>(null);
   const moveHistory = ref<GameMove[]>([]);
@@ -34,4 +34,4 @@ export function useMoveHistory() {
     undoLastMove,
     clearHistory
   };
-}
+};

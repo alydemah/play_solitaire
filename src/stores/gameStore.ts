@@ -13,7 +13,8 @@ export const useGameStore = defineStore('game', () => {
     updateSettings,
     saveGame,
     loadGame,
-    hasGameState
+    hasGameState,
+    checkSavedGame
   } = useGameState();
 
   const {
@@ -25,7 +26,7 @@ export const useGameStore = defineStore('game', () => {
     clearHistory
   } = useMoveHistory();
 
-  function initializeGame() {
+  const initializeGame = () => {
     const config = variantConfig.value;
     const deck = shuffleDeck(createDeck(config.deckCount));
     
@@ -49,9 +50,9 @@ export const useGameStore = defineStore('game', () => {
     clearHistory();
     nextMove.value = findNextMove(gameState.value);
     saveGame();
-  }
+  };
 
-  function handleMove(source: { type: string; index?: number }, target: { type: string; index: number }): boolean {
+  const handleMove = (source: { type: string; index?: number }, target: { type: string; index: number }): boolean => {
     try {
       const result = moveCard(gameState.value, source, target);
       if (result.success && result.move) {
@@ -66,27 +67,30 @@ export const useGameStore = defineStore('game', () => {
       console.error('Error processing move:', err);
       return false;
     }
-  }
+  };
 
-  function showNextMove(): boolean {
+  const showNextMove = (): boolean => {
     if (!nextMove.value) return false;
     return handleMove(
       { type: nextMove.value.sourceType, index: nextMove.value.sourceIndex },
       { type: nextMove.value.targetType, index: nextMove.value.targetIndex }
     );
-  }
+  };
 
   return {
     gameState,
     settings,
-    currentMove,
-    nextMove,
-    initializeGame,
+    variantConfig,
     updateSettings,
+    saveGame,
+    loadGame,
+    hasGameState,
+    initializeGame,
     handleMove,
     showNextMove,
     undoLastMove,
-    loadGame,
-    hasGameState
+    currentMove,
+    nextMove,
+    moveHistory
   };
 });

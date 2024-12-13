@@ -2,12 +2,12 @@ import { ref, onUnmounted } from 'vue';
 import type { Ref } from 'vue';
 import { useGameStore } from '../stores/gameStore';
 
-export function useAutoPlay() {
+export const useAutoPlay = () => {
   const gameStore = useGameStore();
   const isPlaying = ref(false);
   const autoPlayInterval: Ref<number | null> = ref(null);
-  const moveDelay = 1000; // 1 second between moves
-  const maxMoves = 100; // Safety limit to prevent infinite loops
+  const moveDelay = 1000;
+  const maxMoves = 100;
   let moveCount = 0;
 
   const startAutoPlay = () => {
@@ -23,7 +23,7 @@ export function useAutoPlay() {
       }
     };
 
-    makeMove(); // Make first move immediately
+    makeMove();
     autoPlayInterval.value = window.setInterval(makeMove, moveDelay);
   };
 
@@ -36,7 +36,6 @@ export function useAutoPlay() {
     moveCount = 0;
   };
 
-  // Clean up on component unmount
   onUnmounted(() => {
     stopAutoPlay();
   });
@@ -46,4 +45,4 @@ export function useAutoPlay() {
     startAutoPlay,
     stopAutoPlay
   };
-}
+};
